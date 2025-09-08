@@ -6,7 +6,7 @@ import sys
 
 # Try to import settings - handle different import paths
 try:
-    from core.config import settings
+    from config import settings
 except ImportError:
     try:
         from config import settings
