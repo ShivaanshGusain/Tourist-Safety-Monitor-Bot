@@ -8,27 +8,6 @@ class GeofenceCreate(BaseModel):
     center_lng: float
     radius: float
 
-class PolygonGeofenceCreate(BaseModel):
-    name: str
-    place_id: str
-    coordinates: List[List[float]]
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "name": "Central Park",
-                "place_id": "park_001",
-                "coordinates": [
-                    [-73.9814, 40.7681],
-                    [-73.9580, 40.7681],
-                    [-73.9580, 40.8005],
-                    [-73.9814, 40.8005],
-                    [-73.9814, 40.7681]  
-                ]
-            }
-        }
-
-
 class GeofenceResponse(BaseModel):
     place_id: str
     name: str

@@ -4,7 +4,7 @@ import certifi
 import os
 import sys
 
-# Try to import settings - handle different import paths
+# Try to import settings q- handle different import paths
 try:
     from config import settings
 except ImportError:

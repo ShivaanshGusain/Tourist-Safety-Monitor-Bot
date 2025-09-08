@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List
-from models.geofence import GeofenceCreate, PolygonGeofenceCreate
+from models.geofence import GeofenceCreate
 from core import geofence_manager
 router = APIRouter()
 
@@ -25,19 +25,6 @@ async def create_circular_geofence(geofence: GeofenceCreate):
     geofences[geofence.place_id] = geofence.model_dump()
     return {"status": "created", "geofence": geofence}
 
-@router.post("/create/polygon")
-async def create_polygon_geofence(geofence: PolygonGeofenceCreate):
-    """Create a polygon geofence"""
-    result = geofence_manager.create_polygon_geofence(
-        place_id=geofence.place_id,
-        name=geofence.name,
-        coordinates=geofence.coordinates
-    )
-    
-    if "error" in result:
-        raise HTTPException(status_code=400, detail=result["error"])
-    
-    return result
 @router.get("/list")
 async def list_geofences():
     """List all geofences"""
