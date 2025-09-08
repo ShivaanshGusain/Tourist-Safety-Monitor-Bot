@@ -8,6 +8,11 @@ class GeofenceCreate(BaseModel):
     center_lng: float
     radius: float
 
+class PolygonGeofenceCreate(BaseModel):
+    name: str
+    place_id: str
+    coordinates: List[List[float]]
+
 class GeofenceResponse(BaseModel):
     place_id: str
     name: str
@@ -15,4 +20,6 @@ class GeofenceResponse(BaseModel):
     center_lat: Optional[float] = None
     center_lng: Optional[float] = None
     radius: Optional[float] = None
+    polygon_coords: Optional[List[List[float]]] = None
     created_at: str
+    updated_at: Optional[str] = None
