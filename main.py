@@ -1,7 +1,7 @@
 from pymongo import MongoClient
 import os
 from pydantic import BaseModel
-
+from fastapi import FastAPI
 app = FastAPI()
 
 MONGO_URL = os.getenv("MONGO_URL", "mongodb+srv://545ohayu_db_user:zcwvKB50xnUHDzvY@cluster0.v8ym989.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
