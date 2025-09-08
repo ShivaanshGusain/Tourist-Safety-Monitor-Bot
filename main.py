@@ -1,6 +1,6 @@
 from pymongo import MongoClient
 import os
-
+from pydantic import BaseModel
 MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017/")
 client = MongoClient(MONGO_URL)
 db = client["tourist_safety"]
