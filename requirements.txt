@@ -8,4 +8,4 @@ requests
 redis
 pytest
 python-dotenv
-pymongo
+pymongo[srv]==3.12
