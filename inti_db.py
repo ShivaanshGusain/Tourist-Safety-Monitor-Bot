@@ -7,4 +7,6 @@ import models.alert
 
 print("Creating database tables...")
 Base.metadata.create_all(bind=engine)
-print("✅ Database tables created successfully!")
+print("Database tables created successfully!")
+
+# This wont be required for MongoDB
