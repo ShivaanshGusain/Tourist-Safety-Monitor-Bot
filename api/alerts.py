@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from typing import Optional, List
 try:
-    from models import AlertResponse
+    from models.alert import AlertResponse
 except ImportError:
     # Fallback if models aren't set up yet
     from pydantic import BaseModel

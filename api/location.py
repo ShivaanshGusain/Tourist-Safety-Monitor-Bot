@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from typing import Optional, List
-from models import LocationUpdate  # ADD THIS IMPORT
+from models.location import LocationUpdate  # ADD THIS IMPORT
 from core.database import locations_collection, alerts_collection, redis_client
 from core.safety_monitor import SafetyMonitorBot
 from datetime import datetime, timedelta, timezone
