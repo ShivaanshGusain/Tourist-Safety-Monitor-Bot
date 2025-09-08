@@ -18,12 +18,12 @@ except ImportError:
             redis_url = os.getenv("REDIS_URL")
             
 
-        @property
-        def mongodb_uri(self):
-            if not self.mongodb_url:
-                raise ValueError("MONGODB_URL environment variable is required!")
-            return self.mongodb_url
-        settings = Settings()
+            @property
+            def mongodb_uri(self):
+                if not self.mongodb_url:
+                    raise ValueError("MONGODB_URL environment variable is required!")
+                return self.mongodb_url
+            settings = Settings()
 
 
 class Database:
