@@ -24,7 +24,7 @@ class SafetyMonitorBot:
         try:
             # Test database connection
             self.locations_collection.find_one()
-            print("✅ Safety Monitor Bot initialized successfully")
+            print("Safety Monitor Bot initialized successfully")
             return True
         except Exception as e:
             print(f" Failed to initialize Safety Monitor Bot: {e}")

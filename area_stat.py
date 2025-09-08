@@ -4,10 +4,25 @@ from typing import Optional
 from pymongo import MongoClient
 import os
 
-MONGO_URL = os.getenv("MONGO_URL", "mmongodb+srv://545ohayu_db_user:zcwvKB50xnUHDzvY@cluster0.v8ym989.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
-client = MongoClient(MONGO_URL)
-db = client["tourist_safety"]
-area_stats_collection = db["area_stats"]
+MONGO_URL = os.getenv("MONGO_URL")
+
+if not MONGO_URL:
+    raise ValueError(
+        "MONGO_URL environment variable is required!\n"
+        "Please set it in your .env file or environment variables."
+    )
+
+try:
+    client = MongoClient(MONGO_URL)
+    db = client["tourist_safety"]
+    area_stats_collection = db["area_stats"]
+    # Test connection
+    client.admin.command('ping')
+    print("Connected to MongoDB for area stats")
+except Exception as e:
+    print(f"Failed to connect to MongoDB: {e}")
+    raise
+
 
 @dataclass
 class AreaStats:

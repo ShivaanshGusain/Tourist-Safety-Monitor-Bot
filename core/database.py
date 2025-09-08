@@ -43,7 +43,7 @@ def get_database():
         
         if not mongodb_url:
             error_msg = """
-            ❌ MONGODB_URL not found!
+            MONGODB_URL not found!
             
             Please set the MONGODB_URL environment variable:
             - In Render: Add it in the Environment tab
@@ -57,9 +57,9 @@ def get_database():
         
         # Don't print the actual URL (security)
         if "localhost" in mongodb_url:
-            print("⚠️  WARNING: Using localhost MongoDB. This won't work in production!")
+            print("WARNING: Using localhost MongoDB. This won't work in production!")
         else:
-            print("🔄 Connecting to MongoDB Atlas...")
+            print("Connecting to MongoDB Atlas...")
         
         # Try multiple connection methods
         connection_attempts = [
@@ -108,17 +108,17 @@ def get_database():
                 db_name = settings.mongo_db_name if hasattr(settings, 'mongo_db_name') else os.getenv("MONGO_DB_NAME", "tourist_safety")
                 Database.db = Database.client[db_name]
                 
-                print(f"✅ Connected to MongoDB successfully! Database: {db_name}")
+                print(f"Connected to MongoDB successfully! Database: {db_name}")
                 break
                 
             except Exception as e:
                 last_error = e
-                print(f"  ❌ {attempt['name']} failed: {str(e)[:100]}...")
+                print(f"   {attempt['name']} failed: {str(e)[:100]}...")
                 continue
         
         if Database.db is None:
             error_msg = f"""
-            ❌ Failed to connect to MongoDB after all attempts!
+             Failed to connect to MongoDB after all attempts!
             
             Last error: {last_error}
             
@@ -149,14 +149,14 @@ redis_url = settings.redis_url if hasattr(settings, 'redis_url') else os.getenv(
 if redis_url:
     try:
         import redis
-        print("🔄 Connecting to Redis...")
+        print("Connecting to Redis...")
         redis_client = redis.from_url(redis_url, decode_responses=True)
         redis_client.ping()
-        print("✅ Connected to Redis successfully!")
+        print("Connected to Redis successfully!")
     except ImportError:
-        print("⚠️  Redis package not installed. Install with: pip install redis")
+        print(" Redis package not installed. Install with: pip install redis")
     except Exception as e:
-        print(f"⚠️  Redis connection failed: {e}")
+        print(f" Redis connection failed: {e}")
         print("   Continuing without caching...")
         redis_client = None
 
@@ -191,7 +191,7 @@ try:
     geofences_collection = get_collection("geofences")
     alerts_collection = get_collection("alerts")
 except Exception as e:
-    print(f"⚠️  Collections will be initialized on first use: {e}")
+    print(f" Collections will be initialized on first use: {e}")
     locations_collection = None
     geofences_collection = None
     alerts_collection = None
