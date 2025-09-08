@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from models import GeofenceCreate, GeofenceResponse
+from models.geofence import GeofenceCreate, GeofenceResponse
 from core.geofence_manager import GeofenceManager
 from core.database import geofences_collection
 
