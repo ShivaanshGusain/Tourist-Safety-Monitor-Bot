@@ -8,7 +8,7 @@ class SafetyMonitorBot:
     def __init__(self):
         self.alert_manager = AlertManager()
         # MongoDB setup
-        MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017/")
+        MONGO_URL = env("MONGO_URL", "mongodb+srv://545ohayu_db_user:zcwvKB50xnUHDzvY@cluster0.v8ym989.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
         self.client = MongoClient(MONGO_URL)
         self.db = self.client["tourist_safety"]
         self.locations_collection = self.db["user_locations"]

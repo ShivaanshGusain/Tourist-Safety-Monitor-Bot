@@ -17,7 +17,7 @@ class GeofenceCreate(BaseModel):
     description: str = None
 
 # MongoDB connection
-MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017/")
+MONGO_URL = os.getenv("MONGO_URL", "mmongodb+srv://545ohayu_db_user:zcwvKB50xnUHDzvY@cluster0.v8ym989.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
 client = MongoClient(MONGO_URL)
 db = client["tourist_safety"]
 geofences_collection = db["geofences"]
