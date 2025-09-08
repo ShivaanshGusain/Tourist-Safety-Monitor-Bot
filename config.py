@@ -33,17 +33,5 @@ class Settings(BaseSettings):
         env_file_encoding = 'utf-8'
         case_sensitive = False
         
-    @property
-    def mongodb_url_with_ssl(self):
-        """Add SSL parameters if using MongoDB Atlas"""
-        if not self.mongodb_url:
-            raise ValueError("MONGODB_URL environment variable is required!")
-            
-        if self.mongodb_url and "mongodb+srv://" in self.mongodb_url:
-            if "?" in self.mongodb_url:
-                return f"{self.mongodb_url}&tls=true&tlsAllowInvalidCertificates=true"
-            else:
-                return f"{self.mongodb_url}?tls=true&tlsAllowInvalidCertificates=true"
-        return self.mongodb_url
 
 settings = Settings()

@@ -17,15 +17,12 @@ except ImportError:
             mongo_db_name = os.getenv("MONGO_DB_NAME", "tourist_safety")
             redis_url = os.getenv("REDIS_URL")
             
-            @property
-            def mongodb_url_with_ssl(self):
-                if not self.mongodb_url:
-                    return None
-                if "mongodb+srv://" in self.mongodb_url:
-                    separator = "&" if "?" in self.mongodb_url else "?"
-                    return f"{self.mongodb_url}{separator}tls=true&tlsAllowInvalidCertificates=true"
-                return self.mongodb_url
-        
+
+        @property
+        def mongodb_uri(self):
+            if not self.mongodb_url:
+                raise ValueError("MONGODB_URL environment variable is required!")
+            return self.mongodb_url
         settings = Settings()
 
 
