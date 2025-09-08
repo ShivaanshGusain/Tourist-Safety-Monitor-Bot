@@ -6,21 +6,6 @@ shapely
 geopy
 requests
 redis
-sqlalchemy
-asyncpg
 pytest
 python-dotenv
-
-# '''
-# fastapi
-# uvicorn
-# pydantic
-# pydantic-settings
-# shapely
-# geopy
-# requests
-# redis
-# pytest
-# python-dotenv
-# pymongo
-# '''
+pymongo

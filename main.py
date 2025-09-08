@@ -1,15 +1,12 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from datetime import datetime
-import math
-import uvicorn
+from pymongo import MongoClient
+import os
 
-app = FastAPI(title="Tourist Safety Monitor Bot API")
-
-# Storage
-locations = {}
-geofences = {}
-alerts = []
+MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017/")
+client = MongoClient(MONGO_URL)
+db = client["tourist_safety"]
+locations_collection = db["locations"]
+geofences_collection = db["geofences"]
+alerts_collection = db["alerts"]
 
 # Models
 class LocationUpdate(BaseModel):
@@ -35,32 +32,33 @@ def root():
 
 @app.post("/api/geofence/create")
 async def create_geofence(geofence: GeofenceCreate):
-    if geofence.place_id in geofences:
+    if geofences_collection.find_one({"place_id": geofence.place_id}):
         raise HTTPException(status_code=400, detail="Geofence already exists")
-    
-    geofences[geofence.place_id] = geofence.dict()
+    geofences_collection.insert_one(geofence.dict())
     return {"status": "created", "geofence": geofence}
 
 @app.get("/api/geofence/list")
 async def list_geofences():
-    return {"geofences": list(geofences.values())}
+    geofences = list(geofences_collection.find({}, {"_id": 0}))
+    return {"geofences": geofences}
+
 
 @app.post("/api/location/update")
 async def update_location(location: LocationUpdate):
     # Store location
-    locations[location.user_id] = {
+    locations_collection.insert_one({
+        "user_id": location.user_id,
         "lat": location.lat,
         "lng": location.lng,
         "timestamp": datetime.now().isoformat()
-    }
-    
+    })
     # Check geofences
-    for gf_id, gf in geofences.items():
+    geofences = list(geofences_collection.find({}, {"_id": 0}))
+    for gf in geofences:
         distance = calculate_distance(
             location.lat, location.lng,
             gf["center_lat"], gf["center_lng"]
         )
-        
         if distance > gf["radius"]:
             alert = {
                 "user_id": location.user_id,
@@ -70,14 +68,14 @@ async def update_location(location: LocationUpdate):
                 "geofence": gf["name"],
                 "distance": distance
             }
-            alerts.append(alert)
-    
+            alerts_collection.insert_one(alert)
     return {"status": "success", "message": "Location updated"}
 
 @app.get("/api/alerts/{user_id}")
 async def get_alerts(user_id: str):
-    user_alerts = [a for a in alerts if a["user_id"] == user_id]
+    user_alerts = list(alerts_collection.find({"user_id": user_id}, {"_id": 0}))
     return {"user_id": user_id, "alerts": user_alerts, "count": len(user_alerts)}
+
 
 def calculate_distance(lat1, lon1, lat2, lon2):
     """Calculate distance between two points in meters"""
