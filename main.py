@@ -35,6 +35,11 @@ def root():
 def health_check():
     return {"status": "healthy"}
 
+@app.get("/ping")
+async def ping():
+    """Simple ping endpoint"""
+    return {"ping": "pong"}
+
 # This is important for Render
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
