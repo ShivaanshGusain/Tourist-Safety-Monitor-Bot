@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List
+from models.geofence import GeofenceCreate, PolygonGeofenceCreate
 
 router = APIRouter()
 
