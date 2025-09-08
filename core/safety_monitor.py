@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 from core.database import locations_collection, alerts_collection, geofences_collection
 from core.alert_manager import AlertManager
@@ -38,8 +38,7 @@ class SafetyMonitorBot:
                 "user_id": user_id,
                 "lat": lat,
                 "lng": lng,
-                "timestamp": datetime.now(timezone.utc)
-.isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
             self.locations_collection.insert_one(location_doc)
             
@@ -130,8 +129,7 @@ class SafetyMonitorBot:
     async def check_user_activity(self, user_id: str, hours: int = 24) -> Dict:
         """Check user's recent activity"""
         try:
-            cutoff_time = datetime.now(timezone.utc)
- - timedelta(hours=hours)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
             
             recent_locations = list(self.locations_collection.find(
                 {
