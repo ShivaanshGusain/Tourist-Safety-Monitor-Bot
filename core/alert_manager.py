@@ -1,201 +1,179 @@
-from fastapi import APIRouter, HTTPException
-from typing import Optional, List
-from core.database import locations_collection, alerts_collection, redis_client
-from core.safety_monitor import SafetyMonitorBot
 from datetime import datetime, timedelta, timezone
+from typing import Dict, List, Optional
+from pymongo.collection import Collection
 
-router = APIRouter(prefix="/api/location", tags=["locations"])
+# Alert enums
+class AlertSeverity:
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
 
-# Initialize the safety monitor bot with Redis if available
-monitor_bot = SafetyMonitorBot(redis_client=redis_client)
+class AlertType:
+    GEOFENCE_EXIT = "GEOFENCE_EXIT"
+    GEOFENCE_ENTRY = "GEOFENCE_ENTRY"
+    UNSAFE_AREA = "UNSAFE_AREA"
+    SOS = "SOS"
+    LONG_STAY = "LONG_STAY"
+    NO_MOVEMENT = "NO_MOVEMENT"
 
-@router.post("/update")
-async def update_location(location: LocationUpdate):
-    """Update user location and check geofences"""
-    try:
-        # Use the SafetyMonitorBot to process location
-        result = await monitor_bot.process_location_update(
-            user_id=location.user_id,
-            lat=location.lat,
-            lng=location.lng
-        )
+class AlertManager:
+    def __init__(self, alerts_collection: Collection, redis_client=None):
+        """Initialize with existing database connection"""
+        self.alerts_collection = alerts_collection
+        self.redis_client = redis_client
+        self.cooldown_minutes = 5
         
-        if not result.get("success"):
-            raise HTTPException(
-                status_code=500, 
-                detail=result.get("error", "Failed to process location update")
-            )
-        
-        return {
-            "status": "success",
-            "user_id": result["user_id"],
-            "location": result["location"],
-            "timestamp": result["timestamp"],
-            "alerts_triggered": result["alerts_created"],
-            "geofence_status": result["geofence_status"]
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("/history/{user_id}")
-async def get_location_history(
-    user_id: str,
-    limit: Optional[int] = 100,
-    skip: Optional[int] = 0,
-    hours: Optional[int] = None
-):
-    """Get location history for a user"""
-    try:
-        query = {"user_id": user_id}
-        
-        # Filter by time if specified
-        if hours:
-            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
-            query["timestamp"] = {"$gte": cutoff_time.isoformat()}
-        
-        locations = list(
-            locations_collection.find(query, {"_id": 0})
-            .sort("timestamp", -1)
-            .limit(limit)
-            .skip(skip)
-        )
-        
-        total_count = locations_collection.count_documents(query)
-        
-        return {
+    def create_alert(self, user_id: str, alert_type: str, severity: str, 
+                    title: str, message: str, metadata: Dict = None) -> Dict:
+        """Create a new alert"""
+        alert = {
+            "alert_id": f"alert_{user_id}_{datetime.now(timezone.utc).timestamp()}",
+            "type": alert_type,
+            "severity": severity,
             "user_id": user_id,
-            "locations": locations,
-            "count": len(locations),
-            "total_count": total_count,
-            "limit": limit,
-            "skip": skip
+            "title": title,
+            "message": message,
+            "metadata": metadata or {},
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "read": False,
+            "acknowledged": False
         }
         
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        self.alerts_collection.insert_one(alert)
+        return alert
 
-@router.get("/current/{user_id}")
-async def get_current_status(user_id: str):
-    """Get user's current location and geofence status"""
-    try:
-        # Get latest location
-        latest_location = locations_collection.find_one(
-            {"user_id": user_id},
-            {"_id": 0},
-            sort=[("timestamp", -1)]
-        )
+    def check_cooldown(self, user_id: str, geofence_id: str) -> bool:
+        """Check if alert is in cooldown period"""
+        if not self.redis_client:
+            return False
+            
+        cooldown_key = f"alert_cooldown:{user_id}:{geofence_id}"
+        return bool(self.redis_client.get(cooldown_key))
+
+    def set_cooldown(self, user_id: str, geofence_id: str, minutes: int = None):
+        """Set alert cooldown"""
+        if not self.redis_client:
+            return
+            
+        minutes = minutes or self.cooldown_minutes
+        cooldown_key = f"alert_cooldown:{user_id}:{geofence_id}"
+        self.redis_client.setex(cooldown_key, minutes * 60, "1")
+
+    def send_geofence_exit_alert(self, user_id: str, geofence: Dict, 
+                                 current_location: Dict, distance: float = None) -> Optional[Dict]:
+        """Send geofence exit alert with cooldown check"""
+        geofence_id = geofence.get('place_id', 'unknown')
         
-        if not latest_location:
-            return {
-                "user_id": user_id,
-                "has_location": False,
-                "message": "No location data found for user"
+        # Check cooldown
+        if self.check_cooldown(user_id, geofence_id):
+            return None
+        
+        alert = self.create_alert(
+            user_id=user_id,
+            alert_type=AlertType.GEOFENCE_EXIT,
+            severity=AlertSeverity.MEDIUM,
+            title="Safety Alert: Left Safe Zone",
+            message=f"You have left {geofence.get('name', 'the safe zone')}",
+            metadata={
+                "geofence_id": geofence_id,
+                "geofence_name": geofence.get('name'),
+                "exit_location": current_location,
+                "distance_from_center": distance
             }
+        )
         
-        # Get current geofences
-        current_geofences = monitor_bot.get_user_current_geofences(user_id)
+        # Set cooldown
+        self.set_cooldown(user_id, geofence_id)
         
-        return {
-            "user_id": user_id,
-            "has_location": True,
-            "last_location": latest_location,
-            "current_geofences": current_geofences,
-            "is_safe": len(current_geofences) > 0
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return alert
 
-@router.post("/check-activity/{user_id}")
-async def check_user_activity(user_id: str, hours: Optional[int] = 24):
-    """Check user's recent activity and send reminders if needed"""
-    try:
-        # Check activity
-        activity = await monitor_bot.check_user_activity(user_id, hours)
-        
-        # Send reminder if needed
-        reminder_sent = False
-        if activity.get("active") and not activity.get("has_movement"):
-            reminder = await monitor_bot.send_check_in_reminder(user_id)
-            reminder_sent = bool(reminder)
-        
-        return {
-            "user_id": user_id,
-            "activity": activity,
-            "reminder_sent": reminder_sent
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    def send_sos_alert(self, user_id: str, location: Dict, message: str = None) -> Dict:
+        """Send SOS alert"""
+        return self.create_alert(
+            user_id=user_id,
+            alert_type=AlertType.SOS,
+            severity=AlertSeverity.CRITICAL,
+            title="🆘 SOS ALERT",
+            message=message or "Emergency SOS activated",
+            metadata={
+                "location": location,
+                "requires_immediate_action": True
+            }
+        )
 
-@router.post("/batch-update")
-async def batch_location_update(locations: List[LocationUpdate]):
-    """Update multiple user locations at once"""
-    try:
-        results = []
-        
-        for location in locations:
-            try:
-                result = await monitor_bot.process_location_update(
-                    user_id=location.user_id,
-                    lat=location.lat,
-                    lng=location.lng
-                )
-                results.append({
-                    "user_id": location.user_id,
-                    "success": result.get("success", False),
-                    "alerts_created": result.get("alerts_created", 0)
-                })
-            except Exception as e:
-                results.append({
-                    "user_id": location.user_id,
-                    "success": False,
-                    "error": str(e)
-                })
-        
-        success_count = sum(1 for r in results if r.get("success"))
-        
-        return {
-            "total": len(locations),
-            "successful": success_count,
-            "failed": len(locations) - success_count,
-            "results": results
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.delete("/history/{user_id}")
-async def delete_location_history(
-    user_id: str,
-    days_old: Optional[int] = None
-):
-    """Delete location history for a user"""
-    try:
+    def get_user_alerts(self, user_id: str, limit: int = 50, 
+                       unread_only: bool = False) -> List[Dict]:
+        """Get alerts for user"""
         query = {"user_id": user_id}
+        if unread_only:
+            query["read"] = False
+            
+        return list(self.alerts_collection.find(
+            query, 
+            {"_id": 0}
+        ).sort("timestamp", -1).limit(limit))
+
+    def mark_alert_read(self, alert_id: str) -> bool:
+        """Mark alert as read"""
+        result = self.alerts_collection.update_one(
+            {"alert_id": alert_id},
+            {"$set": {"read": True, "read_at": datetime.now(timezone.utc).isoformat()}}
+        )
+        return result.modified_count > 0
+
+    def acknowledge_alert(self, alert_id: str, acknowledged_by: str = None) -> bool:
+        """Acknowledge alert"""
+        result = self.alerts_collection.update_one(
+            {"alert_id": alert_id},
+            {"$set": {
+                "acknowledged": True,
+                "acknowledged_at": datetime.now(timezone.utc).isoformat(),
+                "acknowledged_by": acknowledged_by
+            }}
+        )
+        return result.modified_count > 0
+
+    def delete_old_alerts(self, days: int = 30) -> int:
+        """Delete alerts older than specified days"""
+        cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+        result = self.alerts_collection.delete_many({
+            "timestamp": {"$lt": cutoff_date}
+        })
+        return result.deleted_count
+
+    def get_alert_statistics(self, user_id: str = None) -> Dict:
+        """Get alert statistics"""
+        match_query = {"user_id": user_id} if user_id else {}
         
-        if days_old:
-            cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days_old)).isoformat()
-            query["timestamp"] = {"$lt": cutoff_date}
+        pipeline = [
+            {"$match": match_query},
+            {"$group": {
+                "_id": {
+                    "type": "$type",
+                    "severity": "$severity"
+                },
+                "count": {"$sum": 1}
+            }}
+        ]
         
-        result = locations_collection.delete_many(query)
+        stats = list(self.alerts_collection.aggregate(pipeline))
+        
+        # Process stats
+        by_type = {}
+        by_severity = {}
+        
+        for stat in stats:
+            type_name = stat["_id"]["type"]
+            severity = stat["_id"]["severity"]
+            count = stat["count"]
+            
+            by_type[type_name] = by_type.get(type_name, 0) + count
+            by_severity[severity] = by_severity.get(severity, 0) + count
         
         return {
-            "user_id": user_id,
-            "deleted_count": result.deleted_count,
-            "message": f"Deleted {result.deleted_count} location records"
+            "by_type": by_type,
+            "by_severity": by_severity,
+            "total": sum(s["count"] for s in stats),
+            "user_id": user_id
         }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# Helper endpoint for testing
-@router.get("/test")
-async def test_location_endpoint():
-    """Test endpoint to verify location API is working"""
-    return {
-        "status": "operational",
-        "monitor_bot_initialized": await monitor_bot.initialize(),
-        "timestamp": datetime.now(timezone.utc).isoformat()
-    }
