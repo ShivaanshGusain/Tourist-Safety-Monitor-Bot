@@ -1,13 +1,15 @@
 from pymongo import MongoClient
 import os
 from pydantic import BaseModel
+
+app = FastAPI()
+
 MONGO_URL = os.getenv("MONGO_URL", "mongodb+srv://545ohayu_db_user:zcwvKB50xnUHDzvY@cluster0.v8ym989.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
 client = MongoClient(MONGO_URL)
 db = client["tourist_safety"]
 locations_collection = db["locations"]
 geofences_collection = db["geofences"]
 alerts_collection = db["alerts"]
-
 # Models
 class LocationUpdate(BaseModel):
     user_id: str
