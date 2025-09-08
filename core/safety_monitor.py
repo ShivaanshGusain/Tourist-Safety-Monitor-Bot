@@ -27,7 +27,7 @@ class SafetyMonitorBot:
             print("✅ Safety Monitor Bot initialized successfully")
             return True
         except Exception as e:
-            print(f"❌ Failed to initialize Safety Monitor Bot: {e}")
+            print(f" Failed to initialize Safety Monitor Bot: {e}")
             return False
         
     async def process_location_update(self, user_id: str, lat: float, lng: float) -> Dict:
@@ -121,7 +121,7 @@ class SafetyMonitorBot:
             }
             
         except Exception as e:
-            print(f"❌ Error processing location update: {e}")
+            print(f" Error processing location update: {e}")
             return {
                 "success": False,
                 "error": str(e)
@@ -171,7 +171,7 @@ class SafetyMonitorBot:
             }
             
         except Exception as e:
-            print(f"❌ Error checking user activity: {e}")
+            print(f" Error checking user activity: {e}")
             return {"error": str(e)}
     
     def _calculate_distance(self, lat1: float, lon1: float, 

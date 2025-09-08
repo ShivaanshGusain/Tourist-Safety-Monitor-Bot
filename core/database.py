@@ -19,7 +19,7 @@ def get_database():
             Database.db = Database.client[settings.mongo_db_name]
             print(f"✅ Connected to MongoDB: {settings.mongo_db_name}")
         except Exception as e:
-            print(f"❌ Primary connection failed: {e}")
+            print(f" Primary connection failed: {e}")
             # Fallback
             try:
                 Database.client = MongoClient(
@@ -30,7 +30,7 @@ def get_database():
                 Database.db = Database.client[settings.mongo_db_name]
                 print("✅ Connected to MongoDB with relaxed SSL")
             except Exception as e2:
-                print(f"❌ Fallback connection also failed: {e2}")
+                print(f" Fallback connection also failed: {e2}")
                 raise
     
     return Database.db
